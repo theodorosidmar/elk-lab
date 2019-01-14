@@ -1,0 +1,21 @@
+# macOS files
+.DS_Store
+
+# Git files
+.git/
+.gitignore
+
+# Node files
+node_modules/
+
+# Docker files
+.dockerignore
+docker-compose.yml
+Dockerfile
+
+# Doc files
+readme.md
+
+# Other files
+logstash/
+.vscode/

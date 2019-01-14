@@ -1,0 +1,93 @@
+version: '3.2'
+services:
+  publisher:
+    image: elk-lab-publisher
+    container_name: elk-lab-publisher
+    restart: on-failure
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - rabbitmq
+    labels:
+      com.example.service: "publisher"
+      com.example.description: "Publishing data into Logstash"
+  rabbitmq:
+    image: rabbitmq:3.6-management-alpine
+    container_name: elk-lab-rabbitmq
+    restart: on-failure
+    hostname: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    labels:
+      com.example.service: "rabbitmq"
+      com.example.description: "RabbitMQ for Logstash input"
+  # filebeat:
+    # image: docker.elastic.co/beats/filebeat:6.5.4
+    # container_name: elk-lab-filebeat
+    # restart: on-failure
+    # hostname: filebeat
+    # command: filebeat -e -stric.perms=false
+    # volumes:
+    #   # Mount the filebeat configuration so users can make edit
+    #   - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+    #   # Mount the prospectors directory. Users can in turn add propspectors to this directory and they will be dynamically loaded
+    #   - ./filebeat/prospectors.d/:/usr/share/filebeat/prospectors.d/
+    #   # Mount the hosts system log directory. This represents the logs of the VM hosting docker. Consumed by the filebeat system module.
+    #   - /private/var/log/:/var/log/host/:ro
+    #   # Mount the docker logs for indexing by the custom prospector ./filebeat/prospectors.d
+    #   - /var/lib/docker/containers:/hostfs/var/lib/docker/containers
+    #   # Named volume fsdata. This is used to persist the registry file between restarts, so to avoid data duplication
+    #   - fbdata:/usr/share/filebeat/data/
+    # labels:
+    #   com.example.service: "filebeat"
+    #   com.example.description: "Data shipper (?)"
+  logstash:
+    image: docker.elastic.co/logstash/logstash:6.5.4
+    container_name: elk-lab-logstash
+    restart: on-failure
+    command: bin/logstash -f /logstash_dir/logstash.conf
+    volumes:
+      - ./logstash/:/logstash_dir/
+    ports:
+      - 5959:5959
+    depends_on:
+      - elasticsearch
+      - rabbitmq
+    labels:
+      com.example.service: "logstash"
+      com.example.description: "For logging data"
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.5.4
+    container_name: elk-lab-es
+    restart: on-failure
+    hostname: elasticsearch
+    environment:
+      - cluster.name=elk-lab-cluster
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    labels:
+      com.example.service: "elasticsearch"
+      com.example.description: "For searching and indexing data"
+  kibana:
+    image: docker.elastic.co/kibana/kibana:6.5.4
+    container_name: elk-lab-kibana
+    restart: on-failure
+    hostname: kibana
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+    labels:
+      com.example.service: "kibana"
+      com.example.description: "Data visualization and for log aggregation"
+volumes:
+  esdata:
+  # fbdata:
